@@ -2,11 +2,6 @@
 
 > Nenadzirani sustav za semantičko rangiranje hrvatskih akademskih biomedicinskih sažetaka s Hrčka i Dabra.
 
-![PyTorch](https://img.shields.io/badge/PyTorch-2.11-ee4c2c?logo=pytorch&logoColor=white)
-![CUDA](https://img.shields.io/badge/CUDA-12.8-76b900?logo=nvidia&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-ready-2496ed?logo=docker&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3.10+-3776ab?logo=python&logoColor=white)
-
 ---
 
 ## Struktura projekta
@@ -45,97 +40,6 @@ autoenkoder-hr-bio/
 ├── resources/datasets/              # podaci (nisu u Gitu)
 └── results/                         # modeli i rezultati (nisu u Gitu)
 ```
-
----
-
-## Brzi start
-
-### 1. Build Docker imagea
-
-```bash
-docker build -t autoenkoder:v1.0 .
-```
-
-### 2. Provjera okruženja — lokalno (bez GPU-a)
-
-```bash
-docker run -it --rm \
-  -v ${PWD}:/workspace \
-  autoenkoder:v1.0 \
-  python verify_environment.py
-```
-
-### 3. Provjera okruženja — server s A100
-
-```bash
-docker run --gpus all -it --rm \
-  -v $(pwd):/workspace \
-  autoenkoder:v1.0 \
-  python verify_environment.py
-```
-
-### 4. Preprocessing podataka
-
-```bash
-docker run -it --rm -v ${PWD}:/workspace autoenkoder:v1.0 bash
-```
-
-Unutar containera:
-
-```python
-from src.data.preprocessing import preprocess_corpus, build_bow, save_dataset
-import json
-
-texts = json.load(open('resources/datasets/raw/sazetci.json'))
-processed = preprocess_corpus(texts)
-X_train, X_test, vocab, _ = build_bow(processed[:800], processed[800:])
-save_dataset('resources/datasets/hrcak_bio',
-             X_train, X_test, vocab,
-             processed[:800], processed[800:])
-```
-
-### 5. Treniranje — server (GPU)
-
-```bash
-docker run --gpus all -it --rm \
-  -v $(pwd):/workspace \
-  autoenkoder:v1.0 \
-  python scripts/train.py \
-  --config configs/hrcak_bio/ntm_hfvae.yaml
-```
-
-### 6. Evaluacija
-
-```bash
-python scripts/evaluate.py \
-  --model_path results/hrcak_bio/ntm_hfvae/best_model.pt \
-  --config configs/hrcak_bio/ntm_hfvae.yaml \
-  --query_idx 0
-```
-
----
-
-## Modeli
-
-| Model | Arhitektura | z — interpretacija |
-|-------|-------------|---------------------|
-| NVDM  | `z = h` | latentna varijabla (može biti neg.) |
-| NTM   | `z = ReLU(h)` | težine tema (≥ 0) |
-| GSM   | `z = softmax(h)` | distribucija tema (sumira na 1) |
-
----
-
-## Config — beta parametri (HFVAE)
-
-```yaml
-spec:
-  beta: [gamma, 1.0, alpha, beta, 0.0]
-  #      γ fix   α     β    semi-sup
-```
-
-Preporuka za projekt: `[5.0, 1.0, 1.0, 10.0, 0.0]` — β > γ daje dvije grupe tema.
-
----
 
 ## Reference
 
